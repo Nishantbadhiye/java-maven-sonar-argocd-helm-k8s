@@ -12,6 +12,12 @@ pipeline{
                 git branch: 'main', url: 'https://github.com/Nishantbadhiye/Multi-Tier-with-Database.git'
             }
         }
+        stage('TRIVY FS SCAN') {
+            steps {
+                sh "trivy fs --format table -o  trivyfs.html . "
+            }
+        }
+        
         stage("Sonarqube Analysis "){
             steps{
                 withSonarQubeEnv('Sonar') {
@@ -21,16 +27,12 @@ pipeline{
             }
         }
            
-        stage('TRIVY FS SCAN') {
-            steps {
-                sh "trivy fs --format table -o  trivyfs.txt . "
-            }
-        }
         stage('Build') {
             steps {
-                sh "mvn package"
+                sh "mvn clean package"
             }
         }
+        
         stage('Publish To Nexus ') {
             steps {
                 withMaven(globalMavenSettingsConfig:'settings-maven', jdk:'', maven:'maven3', mavenSettingsConfig:", traceability:true){ 
@@ -38,19 +40,20 @@ pipeline{
                 }
             }
         }
-        stage("Docker Build & Push"){
+
+        stage('Docker Build & Push'){
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker'){   
-                       sh "docker build -t Nishantbadhiye/bankapp:latest ."
-                       sh "docker push Nishantbadhiye/bankapp:latest "
+                       sh "docker build -t nishantbadhiye/bankapp:latest ."
+                       sh "docker push nishantbadhiye/bankapp:latest"
                     }
                 }
             }
         }
         stage("TRIVY"){
             steps{
-                sh "trivy image --format table -o trivyimage.html Nishantbadhiye/bankapp:latest" 
+                sh "trivy image --format table -o trivyimage.html nishantbadhiye/bankapp:latest" 
             }
         }
         stage('Deploy to Kubernetes'){
